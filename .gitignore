@@ -2,3 +2,7 @@
 bazel-*
 # Mac files
 .DS_Store
+
+# p and q BigNum optimization files
+p_bignum.txt
+q_bignum.txt
