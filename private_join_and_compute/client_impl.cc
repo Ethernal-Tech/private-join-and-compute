@@ -129,7 +129,7 @@ namespace private_join_and_compute
     return result;
   }
 
-  StatusOr<std::pair<int64_t, BigNum>>
+  StatusOr<std::tuple<int64_t, BigNum, int64_t>>
   PrivateIntersectionSumProtocolClientImpl::DecryptSum(
       const PrivateIntersectionSumServerMessage::ServerRoundTwo &server_message)
   {
@@ -144,7 +144,7 @@ namespace private_join_and_compute
     {
       return sum.status();
     }
-    return std::make_pair(server_message.intersection_size(), sum.value());
+    return std::make_tuple(server_message.intersection_size(), sum.value(), server_message.computation_proof());
   }
 
   Status PrivateIntersectionSumProtocolClientImpl::StartProtocol(
@@ -205,7 +205,7 @@ namespace private_join_and_compute
       {
         return maybe_result.status();
       }
-      std::tie(intersection_size_, intersection_sum_) =
+      std::tie(intersection_size_, intersection_sum_, computation_proof_) =
           std::move(maybe_result.value());
       // Mark the protocol as finished here.
       protocol_finished_ = true;
@@ -233,7 +233,9 @@ namespace private_join_and_compute
     }
     std::cout << "Client: The intersection size is " << intersection_size_
               << " and the intersection-sum is "
-              << maybe_converted_intersection_sum.value() << std::endl;
+              << maybe_converted_intersection_sum.value()
+              << " and the computation proof is "
+              << computation_proof_ << std::endl;
     return OkStatus();
   }
 
