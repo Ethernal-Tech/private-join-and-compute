@@ -17,7 +17,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
-#include <thread>  // NOLINT
+#include <thread> // NOLINT
 #include <utility>
 
 #include "absl/flags/flag.h"
@@ -38,12 +38,14 @@ ABSL_FLAG(std::string, port, "0.0.0.0:10501", "Port on which to listen");
 ABSL_FLAG(std::string, server_data_file, "",
           "The file from which to read the server database.");
 
-int RunServer() {
-  std::cout << "Server: loading data... " << std::endl;
+int RunServer()
+{
+  // std::cout << "Server: loading data... " << std::endl;
   auto maybe_server_identifiers =
       ::private_join_and_compute::ReadServerDatasetFromFile(
           absl::GetFlag(FLAGS_server_data_file));
-  if (!maybe_server_identifiers.ok()) {
+  if (!maybe_server_identifiers.ok())
+  {
     std::cerr << "RunServer: failed " << maybe_server_identifiers.status()
               << std::endl;
     return 1;
@@ -67,26 +69,29 @@ int RunServer() {
 
   // Run the server on a background thread.
   std::thread grpc_server_thread(
-      [](::grpc::Server* grpc_server_ptr) {
-        std::cout << "Server: listening on " << absl::GetFlag(FLAGS_port)
-                  << std::endl;
+      [](::grpc::Server *grpc_server_ptr)
+      {
+        // std::cout << "Server: listening on " << absl::GetFlag(FLAGS_port)
+        //           << std::endl;
         grpc_server_ptr->Wait();
       },
       grpc_server.get());
 
-  while (!service.protocol_finished()) {
+  while (!service.protocol_finished())
+  {
     // Wait for the server to be done, and then shut the server down.
   }
 
   // Shut down server.
   grpc_server->Shutdown();
   grpc_server_thread.join();
-  std::cout << "Server completed protocol and shut down." << std::endl;
+  // std::cout << "Server completed protocol and shut down." << std::endl;
 
   return 0;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
   absl::ParseCommandLine(argc, argv);
 
   return RunServer();

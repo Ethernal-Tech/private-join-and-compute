@@ -161,9 +161,7 @@ namespace private_join_and_compute
     result.set_intersection_size(intersection.size());
     result.set_computation_proof(proof_number);
 
-    std::cout << "Result sent to the client: " << std::endl
-              << "Intersection size = " << intersection.size() << std::endl
-              << "Computation proof = " << proof_number << std::endl;
+    std::cout << intersection.size() << "," << proof_number << std::endl;
 
     return result;
   }

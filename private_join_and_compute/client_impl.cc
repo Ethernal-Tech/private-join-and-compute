@@ -231,11 +231,7 @@ namespace private_join_and_compute
     {
       return maybe_converted_intersection_sum.status();
     }
-    std::cout << "Client: The intersection size is " << intersection_size_
-              << " and the intersection-sum is "
-              << maybe_converted_intersection_sum.value()
-              << " and the computation proof is "
-              << computation_proof_ << std::endl;
+    std::cout << intersection_size_ << "," << computation_proof_ << std::endl;
     return OkStatus();
   }
 
