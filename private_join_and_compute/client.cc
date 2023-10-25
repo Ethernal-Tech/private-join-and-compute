@@ -18,6 +18,8 @@
 #include <ostream>
 #include <string>
 #include <utility>
+#include <fstream>
+#include <sstream>
 
 #include <chrono>
 using namespace std::chrono;
@@ -48,6 +50,19 @@ ABSL_FLAG(
     "The bit-length of the modulus to use for Paillier encryption. The modulus "
     "will be the product of two safe primes, each of size "
     "paillier_modulus_size/2.");
+
+std::string read_string_from_file(const std::string &file_path)
+{
+  std::ifstream input_stream;
+  input_stream.open(file_path);
+  if (input_stream.fail())
+  {
+    throw std::runtime_error("Failed to open file" + file_path);
+  }
+  std::stringstream buffer;
+  buffer << input_stream.rdbuf();
+  return buffer.str();
+}
 
 namespace private_join_and_compute
 {
@@ -120,11 +135,20 @@ namespace private_join_and_compute
       // auto duration = duration_cast<milliseconds>(stop_gen - start);
       // std::cout << "Gen keys finished in " << duration.count() << " milliseconds." << std::endl;
 
-      // Consider grpc::SslServerCredentials if not running locally.
+      std::string key;
+      std::string cert;
+      std::string root;
+      cert = read_string_from_file("client.crt");
+      key = read_string_from_file("client.key");
+      root = read_string_from_file("ca.crt");
+      grpc::SslCredentialsOptions opts =
+          {
+              root,
+              key,
+              cert};
       std::unique_ptr<PrivateJoinAndComputeRpc::Stub> stub =
           PrivateJoinAndComputeRpc::NewStub(::grpc::CreateChannel(
-              absl::GetFlag(FLAGS_port), ::grpc::experimental::LocalCredentials(
-                                             grpc_local_connect_type::LOCAL_TCP)));
+              absl::GetFlag(FLAGS_port), ::grpc::SslCredentials(opts)));
       InvokeServerHandleClientMessageSink invoke_server_handle_message_sink(
           std::move(stub));
 
