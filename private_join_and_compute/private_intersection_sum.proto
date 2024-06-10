@@ -53,7 +53,7 @@ message PrivateIntersectionSumServerMessage {
 
   message ServerRoundTwo {
     optional int64 intersection_size = 1;
-    optional int64 computation_proof = 2;
+    optional string computation_proof = 2;
     optional bytes encrypted_sum = 3;
   }
 }

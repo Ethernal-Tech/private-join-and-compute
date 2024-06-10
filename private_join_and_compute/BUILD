@@ -57,6 +57,15 @@ cc_library(
     ],
 )
 
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+
+configure_make(
+    name = "libsodium",
+    lib_source = "@libsodium//:libsodium_all",
+    out_lib_dir = "lib",
+    visibility = ["//visibility:public"]
+)
+
 cc_library(
     name = "client_impl",
     srcs = ["client_impl.cc"],
@@ -71,6 +80,7 @@ cc_library(
         "//private_join_and_compute/crypto:ec_commutative_cipher",
         "//private_join_and_compute/crypto:paillier",
         "//private_join_and_compute/util:status_includes",
+        ":libsodium",
     ],
 )
 
@@ -98,6 +108,7 @@ cc_library(
         "//private_join_and_compute/crypto:ec_commutative_cipher",
         "//private_join_and_compute/crypto:paillier",
         "//private_join_and_compute/util:status_includes",
+        ":libsodium",
     ],
 )
 

@@ -27,6 +27,11 @@
 #include "private_join_and_compute/crypto/ec_commutative_cipher.h"
 #include "private_join_and_compute/crypto/paillier.h"
 #include "private_join_and_compute/util/status.inc"
+#include <sodium.h>
+#include <iomanip>
+#include <sstream>
+#include <cstring>
+#include <fstream>
 
 using ::private_join_and_compute::BigNum;
 using ::private_join_and_compute::ECCommutativeCipher;
@@ -66,7 +71,7 @@ namespace private_join_and_compute
     return result;
   }
 
-  // Helper method
+  // Helper methods
   // Get current date/time, format is yyMMddHH:mm:ss
   const std::string currentDateTime()
   {
@@ -78,6 +83,38 @@ namespace private_join_and_compute
     strftime(buf, sizeof(buf), "%y%m%d%X", &tstruct);
 
     return buf;
+  }
+
+  // This function takes a byte array and its length, converting each byte to a two-character hexadecimal representation, and returns the resulting string.
+  std::string bytes_to_hex(const unsigned char *bytes, size_t length)
+  {
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < length; ++i)
+    {
+      ss << std::setw(2) << static_cast<int>(bytes[i]);
+    }
+    return ss.str();
+  }
+
+  // This function does hex string to bytes conversion
+  std::vector<uint8_t> hex_to_bytes(const std::string &hex)
+  {
+    if (hex.length() % 2 != 0)
+    {
+      throw std::invalid_argument("Hex string must have an even length.");
+    }
+
+    std::vector<uint8_t> bytes;
+    bytes.reserve(hex.length() / 2);
+
+    for (size_t i = 0; i < hex.length(); i += 2)
+    {
+      uint8_t byte = static_cast<uint8_t>(std::stoi(hex.substr(i, 2), nullptr, 16));
+      bytes.push_back(byte);
+    }
+
+    return bytes;
   }
 
   StatusOr<PrivateIntersectionSumServerMessage::ServerRoundTwo>
@@ -150,7 +187,7 @@ namespace private_join_and_compute
           public_paillier.Add(sum, ctx_->CreateBigNum(element.associated_data()));
     }
 
-    // Generate computation proof
+    // Generate computation proof semi-random number
     std::string date_time = currentDateTime();
     date_time.erase(remove(date_time.begin(), date_time.end(), ':'), date_time.end());
     int64_t proof_number;
@@ -159,9 +196,66 @@ namespace private_join_and_compute
 
     *result.mutable_encrypted_sum() = sum.ToBytes();
     result.set_intersection_size(intersection.size());
-    result.set_computation_proof(proof_number);
 
-    std::cout << intersection.size() << "," << proof_number << std::endl;
+    // Combine the proof_number and result in a string which will be signed
+    std::string combined_output = std::to_string(intersection.size()) + "," + std::to_string(proof_number);
+
+    if (sodium_init() == -1)
+    {
+      std::cerr << "Failed to initialize libsodium" << std::endl;
+      return result;
+    }
+
+    unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
+    unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+    // Load key files if they exist
+    std::ifstream ifsp("pub_key.txt");
+    if (ifsp.good())
+    {
+      std::string pub_key_content((std::istreambuf_iterator<char>(ifsp)),
+                                  (std::istreambuf_iterator<char>()));
+      std::vector<uint8_t> bytes = hex_to_bytes(pub_key_content);
+      std::copy(bytes.begin(), bytes.end(), public_key);
+
+      std::ifstream ifsq("priv_key.txt");
+      std::string priv_key_content((std::istreambuf_iterator<char>(ifsq)),
+                                   (std::istreambuf_iterator<char>()));
+      bytes = hex_to_bytes(priv_key_content);
+      std::copy(bytes.begin(), bytes.end(), private_key);
+    }
+    else
+    {
+      // Generate key pair
+      crypto_sign_keypair(public_key, private_key);
+
+      // Save generated keys
+      std::string pub_key_hex = bytes_to_hex(public_key, crypto_sign_PUBLICKEYBYTES);
+      std::string priv_key_hex = bytes_to_hex(private_key, crypto_sign_SECRETKEYBYTES);
+
+      std::ofstream myfile;
+      myfile.open("pub_key.txt");
+      myfile << pub_key_hex;
+      myfile.close();
+
+      myfile.open("priv_key.txt");
+      myfile << priv_key_hex;
+      myfile.close();
+    }
+
+    // Convert combined_output to byte array
+    const unsigned char *message = reinterpret_cast<const unsigned char *>(combined_output.c_str());
+    unsigned long long message_len = combined_output.size();
+
+    // Create signature
+    unsigned char signature[crypto_sign_BYTES];
+    unsigned long long signature_len;
+    crypto_sign_detached(signature, &signature_len, message, message_len, private_key);
+
+    // Convert signature to hex string for printing
+    std::string signature_hex = bytes_to_hex(signature, crypto_sign_BYTES);
+
+    result.set_computation_proof(signature_hex);
+    std::cout << intersection.size() << "," << signature_hex << std::endl;
 
     return result;
   }

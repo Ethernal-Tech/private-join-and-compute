@@ -87,7 +87,7 @@ namespace private_join_and_compute
         // After the server computes the intersection-sum, it will send it back to
         // this party for decryption, together with the intersection_size. This party
         // will decrypt and output the intersection sum and intersection size.
-        StatusOr<std::tuple<int64_t, BigNum, int64_t>> DecryptSum(
+        StatusOr<std::tuple<int64_t, BigNum, std::string>> DecryptSum(
             const PrivateIntersectionSumServerMessage::ServerRoundTwo &
                 server_message);
 
@@ -101,7 +101,7 @@ namespace private_join_and_compute
         // These values will hold the intersection sum and size when the protocol has
         // been completed.
         int64_t intersection_size_ = 0;
-        int64_t computation_proof_ = 0;
+        std::string computation_proof_;
         BigNum intersection_sum_;
 
         std::unique_ptr<ECCommutativeCipher> ec_cipher_;
