@@ -26,6 +26,11 @@
 #include <vector>
 #include <thread>
 #include <fstream>
+#include <sodium.h>
+#include <iomanip>
+#include <sstream>
+#include <cstring>
+#include <fstream>
 
 #include "absl/memory/memory.h"
 
@@ -129,7 +134,7 @@ namespace private_join_and_compute
     return result;
   }
 
-  StatusOr<std::tuple<int64_t, BigNum, int64_t>>
+  StatusOr<std::tuple<int64_t, BigNum, std::string>>
   PrivateIntersectionSumProtocolClientImpl::DecryptSum(
       const PrivateIntersectionSumServerMessage::ServerRoundTwo &server_message)
   {
@@ -155,6 +160,38 @@ namespace private_join_and_compute
           ->mutable_start_protocol_request()) =
         PrivateIntersectionSumClientMessage::StartProtocolRequest();
     return client_message_sink->Send(client_message);
+  }
+
+  // This function takes a byte array and its length, converting each byte to a two-character hexadecimal representation, and returns the resulting string.
+  std::string bytes_to_hex(const unsigned char *bytes, size_t length)
+  {
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < length; ++i)
+    {
+      ss << std::setw(2) << static_cast<int>(bytes[i]);
+    }
+    return ss.str();
+  }
+
+  // This function does hex string to bytes conversion
+  std::vector<uint8_t> hex_to_bytes(const std::string &hex)
+  {
+    if (hex.length() % 2 != 0)
+    {
+      throw std::invalid_argument("Hex string must have an even length.");
+    }
+
+    std::vector<uint8_t> bytes;
+    bytes.reserve(hex.length() / 2);
+
+    for (size_t i = 0; i < hex.length(); i += 2)
+    {
+      uint8_t byte = static_cast<uint8_t>(std::stoi(hex.substr(i, 2), nullptr, 16));
+      bytes.push_back(byte);
+    }
+
+    return bytes;
   }
 
   Status PrivateIntersectionSumProtocolClientImpl::Handle(
@@ -231,7 +268,62 @@ namespace private_join_and_compute
     {
       return maybe_converted_intersection_sum.status();
     }
-    std::cout << intersection_size_ << "," << computation_proof_ << std::endl;
+
+    if (sodium_init() == -1)
+    {
+      std::cerr << "Failed to initialize libsodium" << std::endl;
+      return Status(StatusCode::kCancelled, "Failed to initialize libsodium");
+    }
+
+    unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
+    unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+    // Load key files if they exist
+    std::ifstream ifsp("pub_key.txt");
+    if (ifsp.good())
+    {
+      std::string pub_key_content((std::istreambuf_iterator<char>(ifsp)),
+                                  (std::istreambuf_iterator<char>()));
+      std::vector<uint8_t> bytes = hex_to_bytes(pub_key_content);
+      std::copy(bytes.begin(), bytes.end(), public_key);
+
+      std::ifstream ifsq("priv_key.txt");
+      std::string priv_key_content((std::istreambuf_iterator<char>(ifsq)),
+                                   (std::istreambuf_iterator<char>()));
+      bytes = hex_to_bytes(priv_key_content);
+      std::copy(bytes.begin(), bytes.end(), private_key);
+    }
+    else
+    {
+      // Generate key pair
+      crypto_sign_keypair(public_key, private_key);
+
+      // Save generated keys
+      std::string pub_key_hex = bytes_to_hex(public_key, crypto_sign_PUBLICKEYBYTES);
+      std::string priv_key_hex = bytes_to_hex(private_key, crypto_sign_SECRETKEYBYTES);
+
+      std::ofstream myfile;
+      myfile.open("pub_key.txt");
+      myfile << pub_key_hex;
+      myfile.close();
+
+      myfile.open("priv_key.txt");
+      myfile << priv_key_hex;
+      myfile.close();
+    }
+
+    // Convert computation_proof to byte array
+    const unsigned char *message = reinterpret_cast<const unsigned char *>(computation_proof_.c_str());
+    unsigned long long message_len = computation_proof_.size();
+
+    // Create signature
+    unsigned char signature[crypto_sign_BYTES];
+    unsigned long long signature_len;
+    crypto_sign_detached(signature, &signature_len, message, message_len, private_key);
+
+    // Convert signature to hex string for printing
+    std::string signature_hex = bytes_to_hex(signature, crypto_sign_BYTES);
+
+    std::cout << intersection_size_ << "," << signature_hex << std::endl;
     return OkStatus();
   }
 
