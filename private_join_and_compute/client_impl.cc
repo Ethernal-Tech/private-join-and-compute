@@ -323,7 +323,7 @@ namespace private_join_and_compute
     // Convert signature to hex string for printing
     std::string signature_hex = bytes_to_hex(signature, crypto_sign_BYTES);
 
-    std::cout << intersection_size_ << "," << signature_hex << std::endl;
+    std::cout << intersection_size_ << ";" << signature_hex << ";" << computation_proof_ << std::endl;
     return OkStatus();
   }
 
