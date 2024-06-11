@@ -255,7 +255,7 @@ namespace private_join_and_compute
     std::string signature_hex = bytes_to_hex(signature, crypto_sign_BYTES);
 
     result.set_computation_proof(signature_hex);
-    std::cout << intersection.size() << ";" << signature_hex << ";" << combined_output << std::endl;
+    std::cout << intersection.size() << ";" << signature_hex << ";" << combined_output;
 
     return result;
   }
