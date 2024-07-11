@@ -155,13 +155,15 @@ namespace private_join_and_compute
     date_time.erase(remove(date_time.begin(), date_time.end(), ':'), date_time.end());
     int64_t proof_number;
     char *end;
+
+    srand(time(0));
     proof_number = strtoll(date_time.c_str(), &end, 10) * 1000000 + rand() % 1000000;
 
     *result.mutable_encrypted_sum() = sum.ToBytes();
     result.set_intersection_size(intersection.size());
     result.set_computation_proof(proof_number);
 
-    std::cout << intersection.size() << "," << proof_number << std::endl;
+    std::cout << intersection.size() << "," << proof_number;
 
     return result;
   }
