@@ -1,6 +1,7 @@
 yamlCopyname: Bazel Build
 
 on:
+  workflow_dispatch:
   push:
     branches: [ action-test ]
   pull_request:
