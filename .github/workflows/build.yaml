@@ -2,6 +2,7 @@ yamlCopyname: Bazel Build
 
 on:
   push:
+    branches: [ action-test ]
   pull_request:
     branches: [ main ]
 
