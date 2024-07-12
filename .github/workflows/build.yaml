@@ -1,4 +1,4 @@
-yamlCopyname: Bazel Build
+name: Bazel Build
 
 on:
   workflow_dispatch:
